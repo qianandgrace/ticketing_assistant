@@ -1,0 +1,10 @@
+langgraph
+langchain
+langchain-openai
+langchain-deepseek
+langgraph-checkpoint-postgres
+rich
+fastapi
+redis
+concurrent-log-handler
+celery
