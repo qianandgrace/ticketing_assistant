@@ -39,44 +39,72 @@ async def run_agent():
     )
 
     # 将定义的agent的graph进行可视化输出保存至本地
-    save_graph_visualization(agent)
+    # save_graph_visualization(agent)
 
     # 定义short-term需使用的 thread_id
     config = {"configurable": {"thread_id": "1"}}
 
     # 1、非流式处理查询
-    agent_response = await agent.ainvoke({"messages": [HumanMessage(content="预定一个汉庭酒店")]}, config=config) # type: ignore
-    # 将返回的messages进行格式化输出
-    parse_messages(agent_response['messages'])
-    agent_response_content = agent_response["messages"][-1].content
-    # The interrupt contains the full HITL request with action_requests and review_configs
-    print(agent_response['__interrupt__'])
+#     agent_response = await agent.ainvoke({"messages": [HumanMessage(content="预定一个汉庭酒店")]}, config=config) # type: ignore
+#     # 将返回的messages进行格式化输出
+#     parse_messages(agent_response['messages'])
+#     agent_response_content = agent_response["messages"][-1].content
+#     # The interrupt contains the full HITL request with action_requests and review_configs
+#     print(agent_response['__interrupt__'])
 
-    # (1)模拟人类反馈：测试3种反馈方式
-  # Resume with approval decision
-    new_respose = agent.invoke(
-           Command( 
-            resume={"decisions": [{"type": "reject"}]}  # "approve" or "reject"
-            # resume={
-            # "decisions": [
-            #     {
-            #         "type": "edit",
-            #         # Edited action with tool name and args
-            #         "edited_action": {
-            #             # Will usually be the same as the original action.
-            #             "name": "book_hotel",
-            #             # Arguments to pass to the tool.
-            #             "args": {"hotel_name": "七天酒店"},
-            #         }
-            #     }
-            #     ]
-            # }  
-        ), 
-        config=config # Same thread ID to resume the paused conversation # type: ignore
-    )
-    # 将返回的messages进行格式化输出
-    parse_messages(new_respose['messages'])
-    agent_response_content = new_respose["messages"][-1].content
-    print(f"agent_response:{agent_response_content}")
+#     # 模拟人类反馈：测试3种反馈方式，非流式处理·
+#   # Resume with approval decision
+#     new_respose = agent.invoke(
+#            Command( 
+#             resume={"decisions": [{"type": "reject"}]}  # "approve" or "reject"
+#             # resume={
+#             # "decisions": [
+#             #     {
+#             #         "type": "edit",
+#             #         # Edited action with tool name and args
+#             #         "edited_action": {
+#             #             # Will usually be the same as the original action.
+#             #             "name": "book_hotel",
+#             #             # Arguments to pass to the tool.
+#             #             "args": {"hotel_name": "七天酒店"},
+#             #         }
+#             #     }
+#             #     ]
+#             # }  
+#         ), 
+#         config=config # Same thread ID to resume the paused conversation # type: ignore
+#     )
+#     # 将返回的messages进行格式化输出
+#     parse_messages(new_respose['messages'])
+#     agent_response_content = new_respose["messages"][-1].content
+#     print(f"agent_response:{agent_response_content}")
+
+    # 2、流式处理查询
+    async for mode, chunk in agent.astream(
+        {"messages": [{"role": "user", "content": "预定一个如家酒店"}]},
+            config=config, # type: ignore
+            stream_mode=["updates", "messages"],  
+    ):
+        if mode == "messages":
+            # LLM token
+            token, metadata = chunk
+            if token.content: # type: ignore
+                print(token.content, end="", flush=True) # type: ignore
+        elif mode == "updates":
+            # Check for interrupt
+            if "__interrupt__" in chunk:
+                print(f"\n\nInterrupt: {chunk['__interrupt__']}") # type: ignore
+
+    # Resume with streaming after human decision
+    for mode, chunk in agent.stream(
+        Command(resume={"decisions": [{"type": "reject"}]}),
+        config=config, # type: ignore
+        stream_mode=["updates", "messages"],
+    ):
+        if mode == "messages":
+            token, metadata = chunk
+            if token.content: # type: ignore
+                print(token.content, end="", flush=True) # type: ignore
+
 if __name__ == "__main__":
     asyncio.run(run_agent())    
