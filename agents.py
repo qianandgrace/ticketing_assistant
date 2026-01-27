@@ -10,16 +10,17 @@ from langgraph.types import interrupt, Command
 from llm import llm
 from tools import book_hotel
 from utils import parse_messages, save_graph_visualization
+from tools import get_tools
 
 # 定义并运行agent
 async def run_agent():
-    tools = [book_hotel]
+    tools = await get_tools()
     # 生产环境中需要使用数据库落盘（持久化）
     checkpointer = InMemorySaver()
 
     # 定义系统消息
     system_message = SystemMessage(content=(
-        "你是一个AI订票助手。"
+        "你是一个AI订票助手。利用工具查询火车票余票后，选择满足条件的最低的车次的票价去预定"
     ))
 
     # 创建ReAct风格的agent
@@ -30,7 +31,8 @@ async def run_agent():
         middleware=[
         HumanInTheLoopMiddleware( 
             interrupt_on={
-                "book_hotel": True,  # All decisions (approve, edit, reject) allowed
+                "book_railway": True,  # All decisions (approve, edit, reject) allowed
+                "get_tickets": {"allowed_decisions": ["approve", "reject"]},  # Only approve/reject allowed
             },
             description_prefix="Tool execution pending approval",
         ),
@@ -81,7 +83,7 @@ async def run_agent():
 
     # 2、流式处理查询
     async for mode, chunk in agent.astream(
-        {"messages": [{"role": "user", "content": "预定一个如家酒店"}]},
+        {"messages": [{"role": "user", "content": "预定明天从北京到上海的最低价火车票"}]},
             config=config, # type: ignore
             stream_mode=["updates", "messages"],  
     ):
@@ -97,7 +99,7 @@ async def run_agent():
 
     # Resume with streaming after human decision
     for mode, chunk in agent.stream(
-        Command(resume={"decisions": [{"type": "reject"}]}),
+        Command(resume={"decisions": [{"type": "approve"}]}),
         config=config, # type: ignore
         stream_mode=["updates", "messages"],
     ):

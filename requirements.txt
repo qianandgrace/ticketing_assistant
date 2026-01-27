@@ -8,3 +8,4 @@ fastapi
 redis
 concurrent-log-handler
 celery
+langchain-mcp-adapters
