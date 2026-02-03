@@ -187,6 +187,6 @@ async def run_agent(save_node=False, store_memory: bool = False):
 
 
 if __name__ == "__main__":
-    asyncio.run(run_agent())
+    asyncio.run(run_agent(save_node=True))
 
 
