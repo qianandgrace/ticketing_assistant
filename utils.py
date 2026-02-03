@@ -1,5 +1,7 @@
 from typing import List, Any
 
+from langchain_core.messages.utils import count_tokens_approximately, trim_messages
+
 
 def parse_messages(messages: List[Any]) -> None:
     """
@@ -78,3 +80,29 @@ def save_graph_visualization(graph, filename: str = "graph.png") -> None:
     except IOError as e:
         # 记录警告日志
         print(f"Failed to save graph visualization: {e}")
+
+
+# 每次在调用 LLM 的节点之前，都会调用该函数
+# 修剪聊天历史以满足 token 数量或消息数量的限制
+def pre_model_hook(state):
+    trimmed_messages = trim_messages(
+        messages = state["messages"],
+        # 限制为 4 条消息
+        max_tokens=4,
+        strategy="last",
+        # 使用 len 计数消息数量
+        token_counter=len,
+        start_on="human",
+        include_system=True,
+        allow_partial=False,
+    )
+    # trimmed_messages = trim_messages(
+    #     messages = state["messages"],
+    #     strategy="last",
+    #     token_counter=count_tokens_approximately,
+    #     max_tokens=20,
+    #     start_on="human",
+    #     end_on=("human", "tool"),
+    # )
+    # 可以在 `llm_input_messages` 或 `messages` 键下返回更新的信息
+    return {"llm_input_messages": trimmed_messages}
