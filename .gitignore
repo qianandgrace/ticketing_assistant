@@ -1,0 +1,10 @@
+# runtime generated vector index
+pydata2/
+
+# python cache
+__pycache__/
+*.pyc
+
+# optional: local data
+*.log
+*.tmp
